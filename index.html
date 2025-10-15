@@ -619,7 +619,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
     const wrap = document.getElementById('comparisonWrap');
     const cmpEN = document.getElementById('cmpEN');
-    aconst cmpHI = document.getElementById('cmpHI');
+    const cmpHI = document.getElementById('cmpHI');
 
     if (results.EN){
       cmpEN.innerHTML = buildComparisonHTML(results.EN.refWords || [], results.EN.typedWords || []);
@@ -912,3 +912,4 @@ document.addEventListener('DOMContentLoaded', function(){
 </script>
 </body>
 </html>
+
