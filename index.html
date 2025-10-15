@@ -360,8 +360,8 @@ document.addEventListener('DOMContentLoaded', function(){
     for (let i = 0; i < val.length; i++){
       if (val[i] === ' ') spaces.push(i);
     }
-    if (spaces.length <= 1) return -1;
-    return spaces[spaces.length - 2];
+    if (spaces.length <= 1) return -1;      // <2 spaces → no lock yet
+    return spaces[spaces.length - 2];       // boundary AT the second-last space
   }
   function nextLockIndex(currentVal, currentLock){
     const cand = computeLockIndex(currentVal);
@@ -491,7 +491,7 @@ document.addEventListener('DOMContentLoaded', function(){
     const totalKeystrokes = typedRaw.length;   // space counts as 1 keystroke
     const wordsTyped      = totalKeystrokes / 5;
 
-    // Penalty: 5 keystrokes grace; after that each extra 5-ks chunk adds 25 ks penalty (full errors only)
+    // Penalty: 5 keystrokes grace; beyond that, each extra 5-ks chunk adds 25 ks penalty (based on FULL errors)
     const graceKS = 5;
     const errorKSRaw = full * 5;
     const extraErrorKS = Math.max(0, errorKSRaw - graceKS);
@@ -500,7 +500,7 @@ document.addEventListener('DOMContentLoaded', function(){
     const netKeystrokes = Math.max(0, totalKeystrokes - penaltyKS);
     const netWords      = netKeystrokes / 5;
 
-    // Speeds (5-min stage → divide by 5)
+    // Speeds (5-min stage → divide words by 5)
     const grossKPM = totalKeystrokes / minutes;
     const netKPM   = netKeystrokes   / minutes;
     const grossWPM = wordsTyped / 5;
@@ -571,12 +571,13 @@ document.addEventListener('DOMContentLoaded', function(){
 
   // === Partial detection helpers ===
   function isPartial(ref, typed){
+    // Incomplete/partial mistakes: correct letters different order/spacing/casing/punct
     if (ref.toLowerCase() === typed.toLowerCase()) return true;
     const rNP = stripPunct(ref).toLowerCase();
     const tNP = stripPunct(typed).toLowerCase();
     if (rNP === tNP && rNP.length > 0) return true;
     const dist = damerauLevenshtein(ref, typed);
-    return dist <= 2;
+    return dist <= 2; // near-miss threshold
   }
   function stripPunct(s){
     return s.replace(/[^0-9A-Za-z\u0900-\u097F]/g, '');
@@ -618,7 +619,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
     const wrap = document.getElementById('comparisonWrap');
     const cmpEN = document.getElementById('cmpEN');
-    const cmpHI = document.getElementById('cmpHI');
+    aconst cmpHI = document.getElementById('cmpHI');
 
     if (results.EN){
       cmpEN.innerHTML = buildComparisonHTML(results.EN.refWords || [], results.EN.typedWords || []);
@@ -830,88 +831,79 @@ document.addEventListener('DOMContentLoaded', function(){
   els.passageSet.addEventListener('change', function(){ if (started) return; applySet(els.passageSet.value); });
 
   /* ===== Load passages.json (absolute URL + your schema) ===== */
-async function loadPassages(){
-  // Use absolute Pages URL to avoid any base/subpath surprises
-  const PASSAGES_URL = 'https://rohitgsp.github.io/typing-test/passages.json?v=' + Date.now();
-  console.log('[passages.json] fetching:', PASSAGES_URL);
+  async function loadPassages(){
+    const PASSAGES_URL = 'https://rohitgsp.github.io/typing-test/passages.json?v=' + Date.now();
+    console.log('[passages.json] fetching:', PASSAGES_URL);
 
-  try{
-    const res = await fetch(PASSAGES_URL, { cache: 'no-store' });
-    console.log('[passages.json] status:', res.status, res.statusText);
-    if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + res.statusText);
+    try{
+      const res = await fetch(PASSAGES_URL, { cache: 'no-store' });
+      console.log('[passages.json] status:', res.status, res.statusText);
+      if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + res.statusText);
 
-    const clean = (await res.text()).replace(/^\uFEFF/, '');
-    let data;
-    try { data = JSON.parse(clean); }
-    catch (e){ console.error('[passages.json] parse error:', e, 'raw start:', clean.slice(0,160)); throw e; }
+      const clean = (await res.text()).replace(/^\uFEFF/, '');
+      let data;
+      try { data = JSON.parse(clean); }
+      catch (e){ console.error('[passages.json] parse error:', e, 'raw start:', clean.slice(0,160)); throw e; }
 
-    let sets = [];
+      let sets = [];
 
-    // Your schema: { typing_tests: [ { test_number?, level?, english_passage, hindi_passage }, ... ] }
-    if (Array.isArray(data.typing_tests)) {
-      sets = data.typing_tests
-        .filter(t => t && t.english_passage && t.hindi_passage)
-        .map((t, i) => ({
-          id: (t.test_number != null ? `test-${t.test_number}` : `test-${i+1}`),
-          label: `Test ${t.test_number ?? (i+1)}${t.level ? ` — ${t.level}` : ''}`,
-          english: t.english_passage,
-          hindi: t.hindi_passage
+      if (Array.isArray(data.typing_tests)) {
+        sets = data.typing_tests
+          .filter(t => t && t.english_passage && t.hindi_passage)
+          .map((t, i) => ({
+            id: (t.test_number != null ? `test-${t.test_number}` : `test-${i+1}`),
+            label: `Test ${t.test_number ?? (i+1)}${t.level ? ` — ${t.level}` : ''}`,
+            english: t.english_passage,
+            hindi: t.hindi_passage
+          }));
+        console.log('[passages.json] using typing_tests; count:', sets.length);
+      } else if (Array.isArray(data.sets)) {
+        sets = data.sets.filter(s => s && s.english && s.hindi).map((s, i) => ({
+          id: s.id || `set-${i+1}`,
+          label: s.label || `Set ${i+1}`,
+          english: s.english,
+          hindi: s.hindi
         }));
-      console.log('[passages.json] using typing_tests; count:', sets.length);
-    }
-    // Back-compat: { sets: [ {english,hindi} ] }
-    else if (Array.isArray(data.sets)) {
-      sets = data.sets.filter(s => s && s.english && s.hindi).map((s, i) => ({
-        id: s.id || `set-${i+1}`,
-        label: s.label || `Set ${i+1}`,
-        english: s.english,
-        hindi: s.hindi
-      }));
-      console.log('[passages.json] using sets[]; count:', sets.length);
-    }
-    // Flat single: { english, hindi }
-    else if (data && data.english && data.hindi) {
-      sets = [{
-        id: data.id || 'default',
-        label: data.label || 'Default',
-        english: data.english,
-        hindi: data.hindi
+        console.log('[passages.json] using sets[]; count:', sets.length);
+      } else if (data && data.english && data.hindi) {
+        sets = [{
+          id: data.id || 'default',
+          label: data.label || 'Default',
+          english: data.english,
+          hindi: data.hindi
+        }];
+        console.log('[passages.json] using single flat object');
+      } else {
+        throw new Error('No complete EN/HI pairs found (expected typing_tests[], sets[], or {english,hindi}).');
+      }
+
+      if (!sets.length) throw new Error('Zero usable sets after filtering.');
+
+      passageSets = sets;
+      els.passageSet.innerHTML = passageSets.map(s => `<option value="${s.id}">${s.label}</option>`).join('');
+      els.passageSet.value = passageSets[0].id;
+      applySet(passageSets[0].id);
+
+      els.startBtn.disabled = false;
+      els.startBtn.textContent = 'Start English';
+      console.log('[passages.json] loaded successfully.');
+
+    } catch (e){
+      console.error('[passages.json] load error:', e);
+      showToast('⚠️ Could not load passages.json — using built-in default.');
+
+      passageSets = [{
+        id:'default', label:'Default',
+        english:"The Uttar Pradesh Subordinate Services Selection Commission conducts the typing test to check a candidate's ability to type accurately at a practical pace. During the examination you will copy the given passage within a strict five minute window. The objective is not only to reach a higher speed, but also to maintain precision while switching between words, punctuation and casing. Students are advised to focus on rhythm, keep their posture neutral and avoid looking at the keyboard. With consistent practice the gross speed and net speed both improve substantially.",
+        hindi:"उत्तर प्रदेश अधीनस्थ सेवा चयन आयोग द्वारा आयोजित टाइपिंग परीक्षा का उद्देश्य अभ्यर्थियों की गति के साथ-साथ शुद्धता का मूल्यांकन करना है। पाँच मिनट की समयावधि में दिए गए अनुच्छेद को हूबहू टाइप करना होता है। ध्यान रखें कि शब्द, विराम-चिह्न और बड़े-छोटे अक्षरों में त्रुटि न हो। स्थिर गति और लय के साथ अभ्यास करने से सकल गति तथा शुद्ध टाइपिंग गति में लगातार सुधार आता है। अभ्यर्थियों को सही कीबोर्ड लेआउट का प्रयोग करते हुए स्क्रीन पर ध्यान केंद्रित रखना चाहिए।"
       }];
-      console.log('[passages.json] using single flat object');
-    } else {
-      throw new Error('No complete EN/HI pairs found (expected typing_tests[], sets[], or {english,hindi}).');
+      els.passageSet.innerHTML = '<option value="default">Default</option>';
+      els.passageSet.value = 'default';
+      applySet('default');
+      els.startBtn.disabled = false;
+      els.startBtn.textContent = 'Start English';
     }
-
-    if (!sets.length) throw new Error('Zero usable sets after filtering.');
-
-    passageSets = sets;
-    els.passageSet.innerHTML = passageSets.map(s => `<option value="${s.id}">${s.label}</option>`).join('');
-    els.passageSet.value = passageSets[0].id;
-    applySet(passageSets[0].id);
-
-    els.startBtn.disabled = false;
-    els.startBtn.textContent = 'Start English';
-    console.log('[passages.json] loaded successfully.');
-
-  } catch (e){
-    console.error('[passages.json] load error:', e);
-
-    // Show a visible note in the UI so you know it fell back
-    showToast('⚠️ Could not load passages.json — using built-in default.');
-
-    // Fallback so app still works
-    passageSets = [{
-      id:'default', label:'Default',
-      english:"The Uttar Pradesh Subordinate Services Selection Commission conducts the typing test to check a candidate's ability to type accurately at a practical pace. During the examination you will copy the given passage within a strict five minute window. The objective is not only to reach a higher speed, but also to maintain precision while switching between words, punctuation and casing. Students are advised to focus on rhythm, keep their posture neutral and avoid looking at the keyboard. With consistent practice the gross speed and net speed both improve substantially.",
-      hindi:"उत्तर प्रदेश अधीनस्थ सेवा चयन आयोग द्वारा आयोजित टाइपिंग परीक्षा का उद्देश्य अभ्यर्थियों की गति के साथ-साथ शुद्धता का मूल्यांकन करना है। पाँच मिनट की समयावधि में दिए गए अनुच्छेद को हूबहू टाइप करना होता है। ध्यान रखें कि शब्द, विराम-चिह्न और बड़े-छोटे अक्षरों में त्रुटि न हो। स्थिर गति और लय के साथ अभ्यास करने से सकल गति तथा शुद्ध टाइपिंग गति में लगातार सुधार आता है। अभ्यर्थियों को सही कीबोर्ड लेआउट का प्रयोग करते हुए स्क्रीन पर ध्यान केंद्रित रखना चाहिए।"
-    }];
-    els.passageSet.innerHTML = '<option value="default">Default</option>';
-    els.passageSet.value = 'default';
-    applySet('default');
-    els.startBtn.disabled = false;
-    els.startBtn.textContent = 'Start English';
   }
-}
 
   // Init
   resetAll();
@@ -920,4 +912,3 @@ async function loadPassages(){
 </script>
 </body>
 </html>
-
