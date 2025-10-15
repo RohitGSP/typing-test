@@ -360,8 +360,8 @@ document.addEventListener('DOMContentLoaded', function(){
     for (let i = 0; i < val.length; i++){
       if (val[i] === ' ') spaces.push(i);
     }
-    if (spaces.length <= 1) return -1;      // <2 spaces → no lock yet
-    return spaces[spaces.length - 2];       // boundary AT the second-last space
+    if (spaces.length <= 1) return -1;
+    return spaces[spaces.length - 2];
   }
   function nextLockIndex(currentVal, currentLock){
     const cand = computeLockIndex(currentVal);
@@ -470,7 +470,7 @@ document.addEventListener('DOMContentLoaded', function(){
     const typedRaw   = els.inputArea.value;                 // includes spaces
     const typedWords = wordsOf(typedRaw);
 
-    // Classify only for typed words (omissions ignored)
+    // Only count errors for typed words (omissions ignored)
     let full = 0, partial = 0;
 
     const typedLen = typedWords.length;
@@ -484,33 +484,32 @@ document.addEventListener('DOMContentLoaded', function(){
       if (isPartial(rw, tw)) partial++;
       else full++;
     }
-    // extra typed words beyond reference => full errors
+    // Extra typed words beyond reference => full errors
     if (typedLen > refLen) full += (typedLen - refLen);
 
-    // Keystrokes and words typed
+    // Keystrokes & words typed
     const totalKeystrokes = typedRaw.length;   // space counts as 1 keystroke
     const wordsTyped      = totalKeystrokes / 5;
 
-    // Penalty model (hidden): based on FULL errors only
-    const graceKS = 5;                  // 5 erroneous keystrokes allowed
-    const errorKSRaw = full * 5;        // 1 full error ≈ 5 erroneous keystrokes
+    // Penalty: 5 keystrokes grace; after that each extra 5-ks chunk adds 25 ks penalty (full errors only)
+    const graceKS = 5;
+    const errorKSRaw = full * 5;
     const extraErrorKS = Math.max(0, errorKSRaw - graceKS);
     const penaltyKS = extraErrorKS * 25;
 
     const netKeystrokes = Math.max(0, totalKeystrokes - penaltyKS);
     const netWords      = netKeystrokes / 5;
 
-    // Speeds
+    // Speeds (5-min stage → divide by 5)
     const grossKPM = totalKeystrokes / minutes;
     const netKPM   = netKeystrokes   / minutes;
-    const grossWPM = wordsTyped / 5;   // 5-minute stage
-    const netWPM   = netWords  / 5;    // 5-minute stage
+    const grossWPM = wordsTyped / 5;
+    const netWPM   = netWords  / 5;
 
-    // Pass/Fail
     const minSpeed = stage === 'HI' ? 25 : 30;
     const passed = netWPM >= minSpeed;
 
-    // Highlights — move CURSOR to NEXT word if a trailing space was just typed
+    // Highlighting
     const spans = els.textDisplay.querySelectorAll('span');
     for (let n=0;n<spans.length;n++){ spans[n].classList.remove('ok','err','cur'); }
 
@@ -522,10 +521,8 @@ document.addEventListener('DOMContentLoaded', function(){
       if (tw == null) continue;
       if (tw === refWords[i]) span.classList.add('ok'); else span.classList.add('err');
     }
-    const curIndex = (() => {
-      if (endsWithSpace) return Math.min(typedWords.length, refWords.length - 1);
-      return Math.max(0, typedWords.length - 1);
-    })();
+    const curIndex = endsWithSpace ? Math.min(typedWords.length, refWords.length - 1)
+                                   : Math.max(0, typedWords.length - 1);
     const curSpan = spans[curIndex];
     if (curSpan){ curSpan.classList.add('cur'); curSpan.scrollIntoView({block:'nearest', inline:'nearest'}); }
 
@@ -561,7 +558,6 @@ document.addEventListener('DOMContentLoaded', function(){
       els.badgeHI.textContent = 'HI: ' + (passed ? 'PASS' : 'FAIL');
     }
 
-    // return with raw strings (for final comparisons)
     return {
       grossWPM, netWPM, grossKPM, netKPM,
       fullErrors: full, partialErrors: partial,
@@ -580,7 +576,7 @@ document.addEventListener('DOMContentLoaded', function(){
     const tNP = stripPunct(typed).toLowerCase();
     if (rNP === tNP && rNP.length > 0) return true;
     const dist = damerauLevenshtein(ref, typed);
-    return dist <= 2; // near-miss
+    return dist <= 2;
   }
   function stripPunct(s){
     return s.replace(/[^0-9A-Za-z\u0900-\u097F]/g, '');
@@ -620,7 +616,6 @@ document.addEventListener('DOMContentLoaded', function(){
     els.badgeOverall.className = overallPass ? 'pill-pass' : 'pill-fail';
     els.badgeOverall.textContent = 'OVERALL: ' + (overallPass ? 'PASS' : 'FAIL');
 
-    // Build final comparisons for EN & HI
     const wrap = document.getElementById('comparisonWrap');
     const cmpEN = document.getElementById('cmpEN');
     const cmpHI = document.getElementById('cmpHI');
@@ -636,7 +631,6 @@ document.addEventListener('DOMContentLoaded', function(){
     wrap.classList.remove('hidden');
   }
 
-  // Build side-by-side tokens: we render a single line "Original → Typed"
   function buildComparisonHTML(refWords, typedWords){
     const maxLen = Math.max(refWords.length, typedWords.length);
     const parts = [];
@@ -650,7 +644,6 @@ document.addEventListener('DOMContentLoaded', function(){
         if (rw === tw){
           parts.push(span('w-ok', escapeHTML(rw)) + ' ');
         } else if (isPartial(rw, tw)){
-          // show ref~typed for partial
           parts.push(span('w-partial', escapeHTML(tw)) + ' ');
         } else {
           parts.push(span('w-full', escapeHTML(tw)) + ' ');
@@ -674,7 +667,6 @@ document.addEventListener('DOMContentLoaded', function(){
       if (tw === refWords[i]) span.classList.add('ok'); else span.classList.add('err');
     }
 
-    // Move highlight to next word immediately if the last char is space
     const endsWithSpace = val.endsWith(' ');
     const curIndex = endsWithSpace
       ? Math.min(typedWords.length, refWords.length - 1)
@@ -837,32 +829,58 @@ document.addEventListener('DOMContentLoaded', function(){
   els.hindiFont.addEventListener('change', setFonts);
   els.passageSet.addEventListener('change', function(){ if (started) return; applySet(els.passageSet.value); });
 
-  /* ===== Load passages.json ===== */
+  /* ===== Load passages.json (supports typing_tests schema) ===== */
   async function loadPassages(){
+    const PASSAGES_URL = new URL('passages.json', window.location.href).toString();
     try{
-      const res = await fetch('./passages.json?ts=' + Date.now(), { cache: 'no-store' });
-      if(!res.ok) throw new Error('Failed to load passages.json: HTTP ' + res.status);
-      const data = await res.json();
+      const res = await fetch(PASSAGES_URL, { cache: 'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status + ' at ' + PASSAGES_URL);
+
+      const clean = (await res.text()).replace(/^\uFEFF/, ''); // strip BOM
+      const data = JSON.parse(clean);
 
       let sets = [];
-      if (Array.isArray(data.sets)) {
-        sets = data.sets.filter(s => s && s.english && s.hindi);
-      } else if (data.english && data.hindi) {
-        sets = [{ id: data.id || 'default', label: data.label || 'Default', english: data.english, hindi: data.hindi }];
-      } else {
-        throw new Error('Invalid passages.json format');
-      }
-      if (!sets.length) throw new Error('No complete EN/HI pairs found');
 
-      passageSets = sets.map((s, i) => Object.assign({ id: s.id || ('set-'+i), label: s.label || ('Set '+(i+1)) }, s));
+      // Your schema
+      if (Array.isArray(data.typing_tests)) {
+        sets = data.typing_tests
+          .filter(t => t && t.english_passage && t.hindi_passage)
+          .map((t, i) => ({
+            id: (t.test_number != null ? `test-${t.test_number}` : `test-${i+1}`),
+            label: `Test ${t.test_number ?? (i+1)}${t.level ? ` — ${t.level}` : ''}`,
+            english: t.english_passage,
+            hindi: t.hindi_passage
+          }));
+      }
+      // Back-compat schemas
+      else if (Array.isArray(data.sets)) {
+        sets = data.sets.filter(s => s && s.english && s.hindi).map((s,i) => ({
+          id: s.id || `set-${i+1}`,
+          label: s.label || `Set ${i+1}`,
+          english: s.english,
+          hindi: s.hindi
+        }));
+      } else if (data && data.english && data.hindi) {
+        sets = [{
+          id: data.id || 'default',
+          label: data.label || 'Default',
+          english: data.english,
+          hindi: data.hindi
+        }];
+      }
+
+      if (!sets.length) throw new Error('No complete EN/HI pairs found in passages.json');
+
+      passageSets = sets;
       els.passageSet.innerHTML = passageSets.map(s => `<option value="${s.id}">${s.label}</option>`).join('');
       els.passageSet.value = passageSets[0].id;
       applySet(passageSets[0].id);
 
       els.startBtn.disabled = false;
       els.startBtn.textContent = 'Start English';
-    }catch(e){
+    } catch (e){
       console.error('[passages.json] load error:', e);
+      // fallback default
       passageSets = [{
         id:'default', label:'Default',
         english:"The Uttar Pradesh Subordinate Services Selection Commission conducts the typing test to check a candidate's ability to type accurately at a practical pace. During the examination you will copy the given passage within a strict five minute window. The objective is not only to reach a higher speed, but also to maintain precision while switching between words, punctuation and casing. Students are advised to focus on rhythm, keep their posture neutral and avoid looking at the keyboard. With consistent practice the gross speed and net speed both improve substantially.",
@@ -884,5 +902,3 @@ document.addEventListener('DOMContentLoaded', function(){
 </script>
 </body>
 </html>
-
-
