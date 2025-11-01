@@ -44,7 +44,7 @@
 
   /* HUD on the right (timer + avatar) */
   .hud{
-    position:fixed; right:18px; top:84px; z-index:30; /* moved slightly down to avoid overlap with controls */
+    position:fixed; right:12px; top:110px; z-index:20; /* moved down and a bit left to avoid overlap with controls */
     display:flex; align-items:center; gap:14px;
   }
   #hudTimer{
@@ -76,7 +76,7 @@
   .info-right{margin-left:auto; display:flex; align-items:center; gap:10px}
 
   /* Controls below strip (start/reset/selects) */
-  .controls{display:flex; align-items:center; gap:12px; padding:8px 8px 0; flex-wrap:wrap; position:relative; z-index:40;} /* raised z-index so controls don't get overlapped */
+  .controls{display:flex; align-items:center; gap:12px; padding:8px 8px 0; flex-wrap:wrap; position:relative; z-index:70;} /* raised z-index so controls always sit above the HUD */ /* raised z-index so controls don't get overlapped */
   .btn{background:#fff; color:#0b1220; border:1px solid rgba(15,23,42,.12); padding:10px 14px; border-radius:12px; font-weight:800; cursor:pointer}
   .btn:hover{background:#f8fafc}
   .btn[disabled]{opacity:.6; cursor:not-allowed}
@@ -170,7 +170,7 @@
 
   <!-- Top blue masthead -->
   <div class="mast">
-    Typing Test — UPSSSC Junior Assistant Typing Test
+    Typing Test — UPSSSC Junior Assistants English/Hindi Typing Test
   </div>
   <div class="mast-divider"></div>
 
@@ -446,10 +446,12 @@ document.addEventListener('DOMContentLoaded', function(){
     lockIdx = -1; prevLockIdx = -1; lastVal = '';
     snapshotTextarea();
 
-    // Ensure HI analysis and overall are hidden after reset
+    // Ensure ALL analysis and badges are hidden after reset
+    els.bothResults.classList.add('hidden');
     els.statGrossHI.classList.add('hidden');
     els.statNetHI.classList.add('hidden');
     els.statErrorsHI.classList.add('hidden');
+    els.badgeEN.classList.add('hidden');
     els.badgeHI.classList.add('hidden');
     els.badgeOverall.classList.add('hidden');
     els.comparisonWrap.classList.add('hidden');
@@ -570,21 +572,18 @@ document.addEventListener('DOMContentLoaded', function(){
     const stageResult = computeResults(); results[stage]=stageResult;
     setButtonsRunning(false);
 
-    if (stage==='EN'){
-      // After EN submit, hide Hindi analysis and overall until HI completes
-      els.statGrossHI.classList.add('hidden');
-      els.statNetHI.classList.add('hidden');
-      els.statErrorsHI.classList.add('hidden');
-      els.badgeHI.classList.add('hidden');
-      els.badgeOverall.classList.add('hidden');
-      els.comparisonWrap.classList.add('hidden');
+    // Immediately hide any analysis UI after submitting a stage.
+    // Both English and Hindi analyses (and overall) should only be visible after both stages are completed.
+    hideAnalysis();
 
+    if (stage==='EN'){
       let prep=8; els.textDisplay.innerHTML='Hindi starts in <b>'+prep+'</b> seconds… Select font above if needed.';
       const prepInt=setInterval(function(){
         prep--; els.textDisplay.innerHTML='Hindi starts in <b>'+prep+'</b> seconds… Select font above if needed.';
         if(prep<=0){ clearInterval(prepInt); stage='HI'; els.timerEl.textContent='5:00'; els.startBtn.textContent='Start Hindi'; startStage(); }
       },1000);
     } else {
+      // Now that both stages are done, reveal combined results and analyses.
       showCombinedResults(); els.startBtn.textContent='Restart'; els.startBtn.classList.add('btn-primary');
     }
     started=false;
@@ -695,6 +694,18 @@ document.addEventListener('DOMContentLoaded', function(){
     scrollTimer = setTimeout(()=>{ el.scrollIntoView({block:'nearest', inline:'nearest'}); }, 40);
   }
 
+  // helper to hide all analysis UI until both stages complete
+  function hideAnalysis(){
+    els.bothResults.classList.add('hidden');
+    els.statGrossHI.classList.add('hidden');
+    els.statNetHI.classList.add('hidden');
+    els.statErrorsHI.classList.add('hidden');
+    els.badgeEN.classList.add('hidden');
+    els.badgeHI.classList.add('hidden');
+    els.badgeOverall.classList.add('hidden');
+    els.comparisonWrap.classList.add('hidden');
+  }
+
   // === Partial detection helpers ===
   function isPartial(ref, typed){
     if (ref.toLowerCase() === typed.toLowerCase()) return true;
@@ -739,6 +750,7 @@ document.addEventListener('DOMContentLoaded', function(){
     const enPass = results.EN && results.EN.passed === true;
     const hiPass = results.HI && results.HI.passed === true;
     const overallPass = enPass && hiPass;
+    els.badgeOverall.classList.remove('hidden');
     els.badgeOverall.className = overallPass ? 'pill-pass' : 'pill-fail';
     els.badgeOverall.textContent = 'OVERALL: ' + (overallPass ? 'PASS' : 'FAIL');
 
@@ -747,7 +759,7 @@ document.addEventListener('DOMContentLoaded', function(){
     els.statNetHI.classList.remove('hidden');
     els.statErrorsHI.classList.remove('hidden');
     els.badgeHI.classList.remove('hidden');
-    els.badgeOverall.classList.remove('hidden');
+    els.badgeEN.classList.remove('hidden');
 
     const wrap = document.getElementById('comparisonWrap');
     const cmpEN = document.getElementById('cmpEN');
@@ -761,6 +773,8 @@ document.addEventListener('DOMContentLoaded', function(){
       cmpHI.innerHTML = buildComparisonHTML(results.HI.refWords || [], results.HI.typedWords || []);
     } else { cmpHI.innerHTML = '<em class="w-miss">Hindi not attempted.</em>'; }
 
+    // reveal the main result panel and comparison only after both stages
+    els.bothResults.classList.remove('hidden');
     wrap.classList.remove('hidden');
   }
 
