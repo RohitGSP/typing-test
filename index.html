@@ -146,7 +146,7 @@
   .modal .actions{display:flex; justify-content:flex-end; gap:10px; margin-top:12px}
   .modal .actions .btn-primary{background:#16a34a; color:#fff; border:none}
   .modal .actions .btn-primary:hover{background:#15803d}
-  .modal-backdrop.show{display:flex}
+  .modal-backdrop.show{Display:flex}
 
   /* Comparison UI */
   .cmp-wrap{margin-top:14px}
@@ -170,7 +170,7 @@
 
   <!-- Top blue masthead -->
   <div class="mast">
-    Typing Test — UPSSSC Assistants English Typing Test
+    Typing Test — UPSSSC Junior Assistants English Typing Test
   </div>
   <div class="mast-divider"></div>
 
@@ -539,13 +539,22 @@ document.addEventListener('DOMContentLoaded', function(){
     setButtonsRunning(false);
 
     if (stage==='EN'){
+      // After English: do NOT reveal analysis UI. Store results.EN in memory only.
       let prep=8; els.textDisplay.innerHTML='Hindi starts in <b>'+prep+'</b> seconds… Select font above if needed.';
       const prepInt=setInterval(function(){
         prep--; els.textDisplay.innerHTML='Hindi starts in <b>'+prep+'</b> seconds… Select font above if needed.';
         if(prep<=0){ clearInterval(prepInt); stage='HI'; els.timerEl.textContent='5:00'; els.startBtn.textContent='Start Hindi'; startStage(); }
       },1000);
     } else {
-      showCombinedResults(); els.startBtn.textContent='Restart'; els.startBtn.classList.add('btn-primary');
+      // After Hindi: show combined only if EN already exists
+      if (results.EN){
+        showCombinedResults();
+        els.startBtn.textContent='Restart'; els.startBtn.classList.add('btn-primary');
+      } else {
+        // Hindi submitted without English: do not reveal analysis
+        // (store results.HI only; bothResults remains hidden)
+        els.startBtn.textContent='Restart'; els.startBtn.classList.add('btn-primary');
+      }
     }
     started=false;
   }
@@ -607,6 +616,8 @@ document.addEventListener('DOMContentLoaded', function(){
     const curSpan = spans[curIndex];
     if (curSpan){ curSpan.classList.add('cur'); curSpan.scrollIntoView({block:'nearest', inline:'nearest'}); }
 
+    // Update DOM metrics for the current stage (we update values in DOM but keep the results panel hidden
+    // when appropriate — visibility is controlled elsewhere)
     if (stage==='EN'){
       els.grossEN.innerHTML = grossWPM.toFixed(2)+'<span class="u"> WPM</span>';
       els.netEN.innerHTML   = netWPM.toFixed(2)+'<span class="u"> WPM</span>';
@@ -618,7 +629,7 @@ document.addEventListener('DOMContentLoaded', function(){
       els.fullEN.textContent    = full.toString();
       els.partialEN.textContent = partial.toString();
 
-      els.bothResults.classList.remove('hidden'); els.preResultsNote.classList.add('hidden');
+      // set badge values but DO NOT reveal results panel here
       els.badgeEN.className = passed ? 'pill-pass' : 'pill-fail';
       els.badgeEN.textContent = 'EN: ' + (passed ? 'PASS' : 'FAIL');
 
@@ -633,7 +644,7 @@ document.addEventListener('DOMContentLoaded', function(){
       els.fullHI.textContent    = full.toString();
       els.partialHI.textContent = partial.toString();
 
-      els.bothResults.classList.remove('hidden'); els.preResultsNote.classList.add('hidden');
+      // set badge values but DO NOT reveal results panel here; we'll reveal only if EN results exist
       els.badgeHI.className = passed ? 'pill-pass' : 'pill-fail';
       els.badgeHI.textContent = 'HI: ' + (passed ? 'PASS' : 'FAIL');
     }
@@ -690,6 +701,10 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 
   function showCombinedResults(){
+    // Reveal the full results panel and comparison (both language metrics + overall)
+    els.bothResults.classList.remove('hidden');
+    els.preResultsNote.classList.add('hidden');
+
     const enPass = results.EN && results.EN.passed === true;
     const hiPass = results.HI && results.HI.passed === true;
     const overallPass = enPass && hiPass;
@@ -708,6 +723,7 @@ document.addEventListener('DOMContentLoaded', function(){
       cmpHI.innerHTML = buildComparisonHTML(results.HI.refWords || [], results.HI.typedWords || []);
     } else { cmpHI.innerHTML = '<em class="w-miss">Hindi not attempted.</em>'; }
 
+    // Show comparison details as in screenshot
     wrap.classList.remove('hidden');
   }
 
@@ -967,4 +983,3 @@ document.addEventListener('DOMContentLoaded', function(){
 </script>
 </body>
 </html>
-
