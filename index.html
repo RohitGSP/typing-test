@@ -44,7 +44,7 @@
 
   /* HUD on the right (timer + avatar) */
   .hud{
-    position:fixed; right:18px; top:64px; z-index:30;
+    position:fixed; right:18px; top:84px; z-index:30; /* moved slightly down to avoid overlap with controls */
     display:flex; align-items:center; gap:14px;
   }
   #hudTimer{
@@ -62,7 +62,7 @@
   }
   .avatar img{width:48px; height:48px}
   .avatar-caption{
-    position:absolute; right:18px; top:128px; color:#111827; font-size:12px; font-weight:800;
+    position:absolute; right:18px; top:150px; color:#111827; font-size:12px; font-weight:800; /* moved down */
     background:#fff; padding:2px 8px; border-radius:8px; border:1px solid #e5e7eb; box-shadow:var(--soft);
   }
 
@@ -76,7 +76,7 @@
   .info-right{margin-left:auto; display:flex; align-items:center; gap:10px}
 
   /* Controls below strip (start/reset/selects) */
-  .controls{display:flex; align-items:center; gap:12px; padding:8px 8px 0; flex-wrap:wrap}
+  .controls{display:flex; align-items:center; gap:12px; padding:8px 8px 0; flex-wrap:wrap; position:relative; z-index:40;} /* raised z-index so controls don't get overlapped */
   .btn{background:#fff; color:#0b1220; border:1px solid rgba(15,23,42,.12); padding:10px 14px; border-radius:12px; font-weight:800; cursor:pointer}
   .btn:hover{background:#f8fafc}
   .btn[disabled]{opacity:.6; cursor:not-allowed}
@@ -170,7 +170,7 @@
 
   <!-- Top blue masthead -->
   <div class="mast">
-    Typing Test — UPSSSC Assistants English Typing Test
+    Typing Test — UPSSSC Junior Assistant Typing Test
   </div>
   <div class="mast-divider"></div>
 
@@ -179,7 +179,7 @@
     <div id="hudTimer"><span class="lbl">Time left:-</span><span id="timerEl">5:00</span></div>
     <div class="avatar" title="Candidate">
       <!-- simple built-in SVG avatar -->
-      <img alt="avatar" src="data:image/svg+xml;utf8,<?xml version='1.0' encoding='UTF-8'?><svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' x2='0' y1='0' y2='1'><stop offset='0' stop-color='%23bcd3ff'/><stop offset='1' stop-color='%239dbdf8'/></linearGradient></defs><circle cx='32' cy='32' r='31' fill='url(%23g)' stroke='%2388a8e6' stroke-width='2'/><circle cx='32' cy='26' r='11' fill='%23ffffff' stroke='%2388a8e6' stroke-width='2'/><path d='M12 54c4-11 16-14 20-14s16 3 20 14' fill='%23ffffff' stroke='%2388a8e6' stroke-width='2' stroke-linecap='round'/></svg>" />
+      <img alt="avatar" src="data:image/svg+xml;utf8,<?xml version='1.0' encoding='UTF-8'?><svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' x2='0' y1='0' y2='1'><stop offset='0' stop-color='%23bcd3ff'/><stop offset='1' stop-color='%239dbdf8'/></linearGradient></defs><circle cx='32' cy='32' r='31' fill='url(%23g)' stroke='%2388a8e6' stroke-width='2'/><circle cx='32' cy='26' r='11' fill='%23ffffff' stroke='%2388a8e6' stroke-width='2'/><path d='M12 54c4-11 16-14 20-14s16 3 20 14' fill='%23ffffff' stroke='%2388a8e6' stroke-width='2' stroke-linecap='round'/></svg>' />
     </div>
   </div>
   <div class="avatar-caption">CANDIDATE</div>
@@ -215,7 +215,7 @@
     </div>
 
     <!-- Toast -->
-    <div id="toastWrap"><div id="toast">⚠️ CTRL/CMD or Paste not allowed</div></div>
+    <div id="toastWrap"><div id="toast" role="status" aria-live="polite">⚠️ CTRL/CMD or Paste not allowed</div></div>
 
     <!-- Reference Text -->
     <section class="section">
@@ -241,12 +241,12 @@
         <div class="grid">
           <div class="stat"><small>EN Gross</small><div id="grossEN" class="value">0.00<span class="u"> WPM</span></div></div>
           <div class="stat"><small>EN Net</small><div id="netEN" class="value">0.00<span class="u"> WPM</span></div></div>
-          <div class="stat"><small>HI Gross</small><div id="grossHI" class="value">0.00<span class="u"> WPM</span></div></div>
-          <div class="stat"><small>HI Net</small><div id="netHI" class="value">0.00<span class="u"> WPM</span></div></div>
+          <div class="stat" id="statGrossHI"><small>HI Gross</small><div id="grossHI" class="value">0.00<span class="u"> WPM</span></div></div>
+          <div class="stat" id="statNetHI"><small>HI Net</small><div id="netHI" class="value">0.00<span class="u"> WPM</span></div></div>
         </div>
         <div class="grid" style="margin-top:10px">
           <div class="stat"><small>EN Errors</small><div class="value"><span id="fullEN">0</span> full, <span id="partialEN">0</span> partial</div></div>
-          <div class="stat"><small>HI Errors</small><div class="value"><span id="fullHI">0</span> full, <span id="partialHI">0</span> partial</div></div>
+          <div class="stat" id="statErrorsHI"><small>HI Errors</small><div class="value"><span id="fullHI">0</span> full, <span id="partialHI">0</span> partial</div></div>
         </div>
 
         <!-- KPM + Totals -->
@@ -350,6 +350,10 @@ document.addEventListener('DOMContentLoaded', function(){
     instrOk: document.getElementById('instrOk'),
     instrCancel: document.getElementById('instrCancel'),
     stripLang: document.getElementById('stripLang'),
+    statGrossHI: document.getElementById('statGrossHI'),
+    statNetHI: document.getElementById('statNetHI'),
+    statErrorsHI: document.getElementById('statErrorsHI'),
+    comparisonWrap: document.getElementById('comparisonWrap')
   };
 
   /* ===== Instruction HTML ===== */
@@ -393,9 +397,9 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 
   /* ===== Helpers ===== */
-  function wordsOf(text){ return text && text.length ? text.trim().split(/\s+/) : []; }
+  function wordsOf(text){ return text && text.length ? text.trim().split(/\s+/).filter(Boolean) : []; }
   function setPassage(text){
-    const words = text.split(/\s+/);
+    const words = text.split(/\s+/).filter(Boolean);
     els.textDisplay.innerHTML = words.map((w,i)=>`<span data-i="${i}">${w}</span>`).join(' ');
   }
   function setFonts(){
@@ -441,6 +445,14 @@ document.addEventListener('DOMContentLoaded', function(){
     setButtonsRunning(false);
     lockIdx = -1; prevLockIdx = -1; lastVal = '';
     snapshotTextarea();
+
+    // Ensure HI analysis and overall are hidden after reset
+    els.statGrossHI.classList.add('hidden');
+    els.statNetHI.classList.add('hidden');
+    els.statErrorsHI.classList.add('hidden');
+    els.badgeHI.classList.add('hidden');
+    els.badgeOverall.classList.add('hidden');
+    els.comparisonWrap.classList.add('hidden');
   }
 
   /* ===== CURRENT + PREVIOUS WORD LOCK ===== */
@@ -489,11 +501,28 @@ document.addEventListener('DOMContentLoaded', function(){
       els.stageLabel.innerHTML='Stage: <b>English</b> → Hindi';
       els.stripLang.textContent = 'English';
       els.fontLabel.classList.add('hidden'); els.hindiFont.classList.add('hidden');
+
+      // Ensure HI analysis and overall are hidden while attempting EN
+      els.statGrossHI.classList.add('hidden');
+      els.statNetHI.classList.add('hidden');
+      els.statErrorsHI.classList.add('hidden');
+      els.badgeHI.classList.add('hidden');
+      els.badgeOverall.classList.add('hidden');
+      els.comparisonWrap.classList.add('hidden');
+
     } else {
       passage = hindiPassage;
       els.stageLabel.innerHTML='Stage: English → <b>Hindi</b>';
       els.stripLang.textContent = 'Hindi';
       els.fontLabel.classList.remove('hidden'); els.hindiFont.classList.remove('hidden');
+
+      // While attempting HI, HI analysis and overall must not be visible
+      els.statGrossHI.classList.add('hidden');
+      els.statNetHI.classList.add('hidden');
+      els.statErrorsHI.classList.add('hidden');
+      els.badgeHI.classList.add('hidden');
+      els.badgeOverall.classList.add('hidden');
+      els.comparisonWrap.classList.add('hidden');
     }
     setPassage(passage); setFonts(); highlightProgress();
 
@@ -522,8 +551,11 @@ document.addEventListener('DOMContentLoaded', function(){
     const onKey = (e)=>{ if (e.key==='Escape'){ cancel(); } };
     document.addEventListener('keydown', onKey, { once:true });
 
-    els.instrOk.onclick = ok;
+    els.instrOk.onclick = ()=>{ ok(); };
     els.instrCancel.onclick = cancel;
+
+    // focus OK button for accessibility
+    setTimeout(()=> els.instrOk.focus(), 40);
   }
 
   function startStage(){
@@ -539,6 +571,14 @@ document.addEventListener('DOMContentLoaded', function(){
     setButtonsRunning(false);
 
     if (stage==='EN'){
+      // After EN submit, hide Hindi analysis and overall until HI completes
+      els.statGrossHI.classList.add('hidden');
+      els.statNetHI.classList.add('hidden');
+      els.statErrorsHI.classList.add('hidden');
+      els.badgeHI.classList.add('hidden');
+      els.badgeOverall.classList.add('hidden');
+      els.comparisonWrap.classList.add('hidden');
+
       let prep=8; els.textDisplay.innerHTML='Hindi starts in <b>'+prep+'</b> seconds… Select font above if needed.';
       const prepInt=setInterval(function(){
         prep--; els.textDisplay.innerHTML='Hindi starts in <b>'+prep+'</b> seconds… Select font above if needed.';
@@ -555,7 +595,7 @@ document.addEventListener('DOMContentLoaded', function(){
     const elapsedSec = Math.max(1, Math.round((Date.now()-startedAt)/1000));
     const minutes = elapsedSec/60;
 
-    const refWords   = passage.split(/\s+/);
+    const refWords   = passage.split(/\s+/).filter(Boolean);
     const typedRaw   = els.inputArea.value;
     const typedWords = wordsOf(typedRaw);
 
@@ -585,8 +625,8 @@ document.addEventListener('DOMContentLoaded', function(){
 
     const grossKPM = totalKeystrokes / minutes;
     const netKPM   = netKeystrokes   / minutes;
-    const grossWPM = wordsTyped / 5;
-    const netWPM   = netWords  / 5;
+    const grossWPM = wordsTyped / minutes;
+    const netWPM   = netWords  / minutes;
 
     const minSpeed = stage === 'HI' ? 25 : 30;
     const passed = netWPM >= minSpeed;
@@ -602,10 +642,9 @@ document.addEventListener('DOMContentLoaded', function(){
       if (tw == null) continue;
       if (tw === refWords[i]) span.classList.add('ok'); else span.classList.add('err');
     }
-    const curIndex = endsWithSpace ? Math.min(typedWords.length, refWords.length - 1)
-                                   : Math.max(0, typedWords.length - 1);
+    const curIndex = endsWithSpace ? Math.min(typedWords.length, refWords.length - 1)\                                   : Math.max(0, typedWords.length - 1);
     const curSpan = spans[curIndex];
-    if (curSpan){ curSpan.classList.add('cur'); curSpan.scrollIntoView({block:'nearest', inline:'nearest'}); }
+    if (curSpan){ curSpan.classList.add('cur'); debounceScrollIntoView(curSpan); }
 
     if (stage==='EN'){
       els.grossEN.innerHTML = grossWPM.toFixed(2)+'<span class="u"> WPM</span>';
@@ -647,6 +686,13 @@ document.addEventListener('DOMContentLoaded', function(){
     };
 
     function byId(id){ return document.getElementById(id); }
+  }
+
+  // debounce scroll to reduce jank
+  let scrollTimer = null;
+  function debounceScrollIntoView(el){
+    if(scrollTimer) clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(()=>{ el.scrollIntoView({block:'nearest', inline:'nearest'}); }, 40);
   }
 
   // === Partial detection helpers ===
@@ -696,6 +742,13 @@ document.addEventListener('DOMContentLoaded', function(){
     els.badgeOverall.className = overallPass ? 'pill-pass' : 'pill-fail';
     els.badgeOverall.textContent = 'OVERALL: ' + (overallPass ? 'PASS' : 'FAIL');
 
+    // Ensure HI stats and badges are visible when showing combined results
+    els.statGrossHI.classList.remove('hidden');
+    els.statNetHI.classList.remove('hidden');
+    els.statErrorsHI.classList.remove('hidden');
+    els.badgeHI.classList.remove('hidden');
+    els.badgeOverall.classList.remove('hidden');
+
     const wrap = document.getElementById('comparisonWrap');
     const cmpEN = document.getElementById('cmpEN');
     const cmpHI = document.getElementById('cmpHI');
@@ -733,10 +786,10 @@ document.addEventListener('DOMContentLoaded', function(){
     return parts.join('');
   }
   function span(cls, txt){ return `<span class="${cls}">${txt}</span>`; }
-  function escapeHTML(s){ return s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+  function escapeHTML(s){ return s.replace(/[&<>\"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
   function highlightProgress(){
-    const refWords = passage.split(/\s+/);
+    const refWords = passage.split(/\s+/).filter(Boolean);
     const val = els.inputArea.value;
     const typedWords = wordsOf(val);
     const spans = els.textDisplay.querySelectorAll('span');
@@ -753,7 +806,7 @@ document.addEventListener('DOMContentLoaded', function(){
       : Math.max(0, typedWords.length - 1);
 
     const curSpan = spans[curIndex];
-    if (curSpan){ curSpan.classList.add('cur'); curSpan.scrollIntoView({block:'nearest', inline:'nearest'}); }
+    if (curSpan){ curSpan.classList.add('cur'); debounceScrollIntoView(curSpan); }
   }
 
   /* ===== Global guards ===== */
@@ -831,8 +884,8 @@ document.addEventListener('DOMContentLoaded', function(){
     const val = els.inputArea.value;
 
     if (e.key === ' '){
-      const refCount = passage.split(/\s+/).length;
-      const typedCount = (val.trim().length ? val.trim().split(/\s+/).length : 0);
+      const refCount = passage.split(/\s+/).filter(Boolean).length;
+      const typedCount = (val.trim().length ? val.trim().split(/\s+/).filter(Boolean).length : 0);
       if (typedCount >= refCount){ e.preventDefault(); return; }
     }
 
